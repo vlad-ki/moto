@@ -5,7 +5,6 @@
     <meta content="text/html; charset=utf-8">
     <title>MotoNote</title>
 </head>
-
 <body>
 % include('templates/header.tpl')
 <table border="3">
