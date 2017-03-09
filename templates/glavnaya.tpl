@@ -6,7 +6,10 @@
     <title>MotoNote</title>
 </head>
 <body>
-% include('templates/header.tpl')
+    % include('templates/header.tpl')
+    % if dateerror:
+        <br><strong>Не верный формат даты. Рекомендуевый формат </strong><i>ДД.ММ.ГГГГ</i><br>
+    % end
 <table border="3">
     <thead>
         <tr>
@@ -21,7 +24,7 @@
         % for note in list_of_notes:
             <tr>
                 <td><a href="/edit_note?_id={{note['_id']}}">e</a></td>
-                <td>{{note['date']}}</td>
+                <td>{{note['date'].day}}.{{note['date'].month}}.{{note['date'].year}}</td>
                 <td>{{note['odometr']}}</td>
                 <td>{{note['type_to_do']}}</td>
                 <td>{{note['info']}}</td>
@@ -29,7 +32,6 @@
         % end
     </tbody>
 </table>
-
     <form action='add_note' method="POST">
             <input type='datetime' name='date' placeholder="Date"><br>
             <input type='number' name='odometr' placeholder="Odometr"><br>
