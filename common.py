@@ -1,3 +1,4 @@
+import inspect
 from datetime import datetime
 from pymongo import MongoClient
 from bson.objectid import ObjectId
@@ -6,6 +7,10 @@ from pandas.tslib import NaTType
 
 
 class DateValueError(ValueError):
+    pass
+
+
+class PluginError(EnvironmentError):
     pass
 
 
@@ -29,14 +34,14 @@ class Note():
 
 
 class Mongo():
-    def __init__(self, db, kollection):
+    def __init__(self, db, collection):
         self.db = getattr(MongoClient(), db)
-        self.kollection = getattr(self.db, kollection)
+        self.collection = getattr(self.db, collection)
 
     def save(self, object_):
         kwargs = vars(object_)
         if kwargs.get('_id'):
-            self.kollection.update_one(
+            self.collection.update_one(
                 {'_id': kwargs.pop('_id')},
                 {
                     '$set': kwargs
@@ -45,19 +50,53 @@ class Mongo():
 
         else:
             kwargs.pop('_id')
-            self.kollection.insert(kwargs)
+            self.collection.insert(kwargs)
 
     def list(self):
         list_of_notes = []
-        for note in self.kollection.find():
+        for note in self.collection.find():
             list_of_notes.append(note)
         return list_of_notes
 
     def find_one(self, object_):
         kwargs = vars(object_)['_id']
-        return self.kollection.find_one(kwargs)
+        return self.collection.find_one(kwargs)
 
     def remove(self, object_):
         kwargs = {'_id': object_._id}
-        result = self.kollection.delete_one(kwargs)
+        result = self.collection.delete_one(kwargs)
         return result.deleted_count if result.deleted_count == 1 else None
+
+
+class MongoPlugin:
+    def __init__(self, db, collection, keyword='mongo'):
+        self.db = db
+        self.collection = collection
+        self.keyword = keyword
+        self.mongo = None
+
+    def setup(self, app):
+        for other in app.plugins:
+            if not isinstance(other, MongoPlugin):
+                continue
+            if other.keyword == self.keyword:
+                raise PluginError(
+                    "Found another Mongo plugin with "
+                    "conflicting settings (non-unique keyword)."
+                )
+
+    def apply(self, callback, context):
+        args = inspect.getargspec(context.callback)[0]
+        if self.keyword not in args:
+            return callback
+
+        def wrapper(*args, **kwargs):
+            if not self.mongo:
+                self.mongo = Mongo(self.db, self.collection)
+            kwargs[self.keyword] = self.mongo
+
+            result = callback(*args, **kwargs)
+
+            return result
+
+        return wrapper
