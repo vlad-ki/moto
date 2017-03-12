@@ -13,9 +13,6 @@ from common import (
 )
 
 
-NOTES = MongoPlugin('moto', 'notes')
-install(NOTES)
-
 debug(True)
 
 
@@ -70,5 +67,9 @@ def delete_note(mongo):
 
     redirect('/')
 
+
+if __name__ == '__main__':
+    NOTES = MongoPlugin('moto', 'notes')
+    install(NOTES)
 
 run(host='localhost', port=8080, reloader=True)
