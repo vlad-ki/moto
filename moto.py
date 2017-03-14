@@ -3,17 +3,25 @@ from bottle import (
     debug, run,
     request, response,
     redirect, template,
-    install
+    install,
+    static_file
 )
 
 from common import (
     Note,
     DateValueError,
-    MongoPlugin
+    MongoPlugin,
+    date_parse,
+    note_object_to_dict
 )
 
 
 debug(True)
+
+
+@route('/templates/<filename:path>')
+def static(filename):
+    return static_file(filename, root='/home/vk/doc/projects/moto/app/templates/')
 
 
 @route('/')
@@ -28,19 +36,22 @@ def add_note(mongo):
     odometr = request.forms.get('odometr')
     type_to_do = request.forms.get('type_to_do')
     info = request.forms.get('info')
+
     try:
-        note = Note(date=date, odometr=odometr, type_to_do=type_to_do, info=info)
-        mongo.save(note)
-        redirect('/')
+        date = date_parse(date)
     except DateValueError:
         list_of_notes = mongo.list()
         return template('templates/glavnaya', list_of_notes=list_of_notes, dateerror=True)
+
+    note = Note(date=date, odometr=odometr, type_to_do=type_to_do, info=info)
+    mongo.save(note_object_to_dict(note))
+    redirect('/')
 
 
 @route('/edit_note')
 def edit_note(mongo):
     _id = request.query._id
-    note = mongo.find_one(Note(_id))
+    note = mongo.find_one(note_object_to_dict(Note(_id)))
     return template('templates/edit_note', note=note, dateerror=None)
 
 
@@ -51,13 +62,16 @@ def edit_note(mongo):
     odometr = request.forms.get('odometr')
     type_to_do = request.forms.get('type_to_do')
     info = request.forms.get('info')
+
     try:
-        note = Note(_id=_id, date=date, odometr=odometr, type_to_do=type_to_do, info=info)
-        mongo.save(note)
-        redirect('/')
+        date = date_parse(date)
     except DateValueError:
-        note = mongo.find_one(Note(_id))
+        note = mongo.find_one(note_object_to_dict(Note(_id)))
         return template('templates/edit_note', note=note, dateerror=True)
+
+    note = Note(_id=_id, date=date, odometr=odometr, type_to_do=type_to_do, info=info)
+    mongo.save(note_object_to_dict(note))
+    redirect('/')
 
 
 @post('/delete_note')

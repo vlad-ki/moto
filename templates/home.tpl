@@ -4,13 +4,14 @@
 <head>
     <meta content="text/html; charset=utf-8">
     <title>MotoNote</title>
+    <link rel="stylesheet" type="text/css" href="/templates/style.css">
 </head>
 <body>
     % include('templates/header.tpl')
     % if dateerror:
         <br><strong>Не верный формат даты. Рекомендуевый формат </strong><i>ДД.ММ.ГГГГ</i><br>
     % end
-<table border="3">
+<table border="1" bordercolor="#3399ff">
     <thead>
         <tr>
             <th>edit</th>

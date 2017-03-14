@@ -3,6 +3,7 @@
 <head>
 	<meta charset="utf-8">
 	<title>MotoNote | Edit Note</title>
+	<link rel="stylesheet" type="text/css" href="/templates/style.css">
 </head>
 <body>
 	% include('templates/header.tpl')

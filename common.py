@@ -1,9 +1,7 @@
 import inspect
-from datetime import datetime
 from pymongo import MongoClient
 from bson.objectid import ObjectId
-from pandas import to_datetime
-from pandas.tslib import NaTType
+from dateutil.parser import parse
 
 
 class DateValueError(ValueError):
@@ -17,16 +15,9 @@ class PluginError(EnvironmentError):
 class Note():
     def __init__(self, _id=None, user_id=None, date=None,
                  odometr=None, type_to_do=None, info=None):
-        if date:
-            #  check ',' because I think that is a bad in this place in pasdas package
-            if ',' in date:
-                raise DateValueError
-            date = to_datetime(date, errors='coerce')
-            if isinstance(date, NaTType):
-                raise DateValueError
 
         self._id = ObjectId(_id) if _id else None
-        self.date = datetime(int(date.year), int(date.month), int(date.day)) if date else None
+        self.date = date
         self.odometr = odometr
         self.type_to_do = type_to_do
         self.info = info
@@ -39,18 +30,17 @@ class Mongo():
         self.collection = getattr(self.db, collection)
 
     def save(self, object_):
-        kwargs = vars(object_)
-        if kwargs.get('_id'):
+        if object_.get('_id'):
             self.collection.update_one(
-                {'_id': kwargs.pop('_id')},
+                {'_id': object_.pop('_id')},
                 {
-                    '$set': kwargs
+                    '$set': object_
                 }
             )
 
         else:
-            kwargs.pop('_id')
-            self.collection.insert(kwargs)
+            object_.pop('_id')
+            self.collection.insert(object_)
 
     def list(self):
         list_of_notes = []
@@ -59,12 +49,11 @@ class Mongo():
         return list_of_notes
 
     def find_one(self, object_):
-        kwargs = vars(object_)['_id']
-        return self.collection.find_one(kwargs)
+        return self.collection.find_one(object_['_id'])
 
     def remove(self, object_):
-        kwargs = {'_id': object_._id}
-        result = self.collection.delete_one(kwargs)
+        object_ = {'_id': object_._id}
+        result = self.collection.delete_one(object_)
         return result.deleted_count if result.deleted_count == 1 else None
 
 
@@ -100,3 +89,25 @@ class MongoPlugin:
             return result
 
         return wrapper
+
+
+def date_parse(date):
+    try:
+        return parse(date)
+    except ValueError:
+        raise DateValueError
+
+
+def note_object_to_dict(note):
+    if isinstance(note, Note):
+        return {
+            '_id': note._id,
+            'user_id': note.user_id,
+            'date': note.date,
+            'odometr': note.odometr,
+            'type_to_do': note.type_to_do,
+            'info': note.info
+        }
+    else:
+        raise TypeError(
+            'argument of "note_object_to_dict" function must be object of "Note" class')
