@@ -24,23 +24,26 @@ class Note():
         self.user_id = user_id
 
 
-class Mongo():
-    def __init__(self, db, collection):
-        self.db = getattr(MongoClient(), db)
-        self.collection = getattr(self.db, collection)
+class BaseResource:
+    collection_name = None
+    model = None
 
-    def save(self, object_):
-        if object_.get('_id'):
+    def __init__(self, db):
+        self.db = db
+        self.collection = self._get_collection(self.db)
+
+    def save(self, document):
+        if document.get('_id'):
             self.collection.update_one(
-                {'_id': object_.pop('_id')},
+                {'_id': document.pop('_id')},
                 {
-                    '$set': object_
+                    '$set': document
                 }
             )
 
         else:
-            object_.pop('_id')
-            self.collection.insert(object_)
+            document.pop('_id')
+            self.collection.insert(document)
 
     def list(self):
         list_of_notes = []
@@ -48,21 +51,25 @@ class Mongo():
             list_of_notes.append(note)
         return list_of_notes
 
-    def find_one(self, object_):
-        return self.collection.find_one(object_['_id'])
+    def find_one(self, document):
+        return self.collection.find_one(document['_id'])
 
-    def remove(self, object_):
-        object_ = {'_id': object_._id}
-        result = self.collection.delete_one(object_)
+    def remove(self, document):
+        document = {'_id': document._id}
+        result = self.collection.delete_one(document)
         return result.deleted_count if result.deleted_count == 1 else None
+
+    @classmethod
+    def _get_collection(cls, db):
+        return getattr(db, cls.collection_name)
 
 
 class MongoPlugin:
-    def __init__(self, db, collection, keyword='mongo'):
+    def __init__(self, db, keyword='note_res'):
         self.db = db
-        self.collection = collection
         self.keyword = keyword
         self.mongo = None
+        self.note_resource = None
 
     def setup(self, app):
         for other in app.plugins:
@@ -81,14 +88,21 @@ class MongoPlugin:
 
         def wrapper(*args, **kwargs):
             if not self.mongo:
-                self.mongo = Mongo(self.db, self.collection)
-            kwargs[self.keyword] = self.mongo
+                self.mongo = getattr(MongoClient(), self.db)
+            if not self.note_resource:
+                self.note_resource = NoteResource(self.mongo)
+            kwargs[self.keyword] = self.note_resource
 
             result = callback(*args, **kwargs)
 
             return result
 
         return wrapper
+
+
+class NoteResource(BaseResource):
+    collection_name = 'notes'
+    model = Note
 
 
 def date_parse(date):
